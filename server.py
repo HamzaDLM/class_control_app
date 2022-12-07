@@ -1,8 +1,8 @@
 # CLASS CONTROL APP - SERVER SIDE (TEACHER)
+# TODO: check if connection is still maintained
 import socket
 import pickle
 from datetime import datetime
-
 class bcolors:
     HEADER = "\033[95m"
     OKBLUE = "\033[94m"
@@ -13,7 +13,6 @@ class bcolors:
     ENDC = "\033[0m"
     BOLD = "\033[1m"
     UNDERLINE = "\033[4m"
-
 
 class CCA_SERVER:
     def __init__(self, host, port):
@@ -52,7 +51,7 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
         - exitclient  : DISCONNECT CLIENT
         - exitserver  : DISCONNECT SERVER
         - bhistory    : GET BROWSER HISTORY (LAST 40)
-
+        - screenshot  : GET SCREENSHOT OF CURRENT SESSION
         """
         )
 
@@ -82,6 +81,9 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
                 result = client.recv(1024*10)
                 result = pickle.loads(result)
                 for h in result: print(f"{datetime.fromtimestamp(h)} : {result[h]}")
+
+            elif command == "screenshot":
+                self.result()
 
             else:
                 print(
