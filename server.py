@@ -24,7 +24,7 @@ ANSI_color = {
     "UNDERLINE": "\033[4m",
 }
 
-def log_level(level):
+def log_level(level: str):
     match level:
         case "info":
             return f"[{ANSI_color['OKBLUE']}INFO{ANSI_color['ENDC']}]"
@@ -137,21 +137,31 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
         return str(int(time.time()))
 
     def receive_scrn(self):
-        img_path = os.path.join(LOCATION, f"scrn/host__{self.getTS()}.npy")
-        file = open(img_path, 'wb')
-        data = client.recv(1024)
-        file.write(data)
-        while data != b'':
-            print('receiving...')
+
+        try:
+            img_path = os.path.join(LOCATION, f"scrn/host__{self.getTS()}.npy")
+            file = open(img_path, 'wb')
+            
             data = client.recv(1024)
             file.write(data)
-        file.close()
-        o_file = np.load(img_path)
-        pil_img = Image.fromarray(np.uint8(o_file)).convert('RGB')
-        pil_img.show()
-        print(f"{log_level('success')}: screenshot received!")
-
-    
+            
+            while data != b'':
+                print('receiving...')
+                data = client.recv(1024)
+                print(len(data))
+                file.write(data)
+                if len(data) < 1024:
+                    break
+            
+            file.close()
+            o_file = np.load(img_path)
+            pil_img = Image.fromarray(np.uint8(o_file)).convert('RGB')
+            pil_img.show()
+            
+            print(f"{log_level('success')}: screenshot received!")
+        except:
+            print(f"{log_level('')}Screenshot failed")
+            sock.close()
 
 if __name__ == "__main__":
     server = CCA_SERVER("127.0.0.1", 4444)

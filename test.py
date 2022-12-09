@@ -17,14 +17,36 @@
 # for h in b: print(f"{datetime.fromtimestamp(h)} : {b[h]}")
 
 
-from PIL import ImageGrab
+# from PIL import ImageGrab
 
-screenshot = ImageGrab.grab()
-a = screenshot.tobytes()
-print(type(a))
-# print(a)
+# screenshot = ImageGrab.grab()
+# a = screenshot.tobytes()
+# print(type(a))
+# # print(a)
 
 
 # save_path = os.path.join(LOCATION, f"scrn/{MAC_ADDRESS}_{self.getTS()}.jpg")
 # screenshot.save(save_path)
 # screenshot.show()
+
+
+class Ta():
+    def func_a(self):
+        print('func a of test a')
+    
+    @staticmethod
+    def func_b():
+        print('func b of test a')
+
+class Tb(Ta):
+    @staticmethod
+    def func_a():
+        print('func a of test b')
+    
+class Tc(Tb):
+    def func_b(self):
+        print('func b of test c')
+
+Ta().func_a()
+Tb().func_a()
+Tb().func_b()

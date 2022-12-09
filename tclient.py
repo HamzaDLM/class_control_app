@@ -3,28 +3,24 @@
 import socket
 import numpy as np 
 # import cv2
-from PIL import Image
+from PIL import ImageGrab
 
 s = socket.socket()
 s.connect((socket.gethostname(), 1234))
 print("connected.")
 
-filename = 'client_data.npy'
-file = open(filename, 'wb')
+# img #
+filename = 'host_data.npy'
 
-data = s.recv(1024)
-file.write(data)
+img = np.array(ImageGrab.grab())
+np.save(filename, img)
+file = open(filename, 'rb')
+data = file.read(1024)
+s.send(data)
 
 while data != b'':
-    data = s.recv(1024)
-    file.write(data)
-file.close()
+    data = file.read(1024)
+    s.send(data)
+# img #
 
-o_file = np.load(filename)
-PIL_image = Image.fromarray(np.uint8(o_file)).convert('RGB')
-# PIL_image = Image.fromarray(numpy_image.astype('uint8'), 'RGB')
-PIL_image.show()
-# o_file = cv2.cvtColor(o_file, cv2.COLOR_BGR2RGB)
-# cv2.imshow('transferred file', o_file)
-# cv2.waitKey(0)
 s.close()
