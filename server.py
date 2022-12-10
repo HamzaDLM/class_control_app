@@ -132,9 +132,6 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
             elif command == 'help':
                 self.list_commands()
 
-            elif command == 'help':
-                self.list_commands()
-
             elif command == 'killc':
                 self.result()
 
