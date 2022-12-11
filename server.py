@@ -1,7 +1,4 @@
 # CLASS CONTROL APP - SERVER SIDE (TEACHER)
-# TODO: check if connection is still maintained
-# TODO: add security via tokens and end-to-end encryption
-# TODO: Support multiple clients
 from threading import Thread
 import numpy as np
 import socket

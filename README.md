@@ -42,6 +42,14 @@ pip install -r requirements.txt
 | proxyon / proxyoff | Enable proxy to redirect http https proxy. |
 |      history       | Get browser history.                       |
 
+### TODO
+- [ ] Add end-to-end encryption.
+- [ ] Add all necessary exception & error handling.
+- [ ] Complete the commands list.
+- [ ] Add checks for if connections still maintained.
+- [ ] Add Connection via secured tokens.
+
+
 ## Contributions
 
 Feel free to submit a pull request!
