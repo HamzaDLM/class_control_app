@@ -1,5 +1,6 @@
 scrn/*
-venv/
+clientenv/
+serverenv/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
