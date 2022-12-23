@@ -1,4 +1,5 @@
 # CLASS CONTROL APP - SERVER SIDE (TEACHER)
+# TODO: add a remote updater (def to look for changes and update accordingly)
 from threading import Thread
 import numpy as np
 import socket
@@ -94,13 +95,13 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
 
         List of client specific commands:
 
-        **** INFORMATION ****
+                INFORMATION 
         - help        : GET ALL AVAILABLE COMMANDS
         - mac         : GET MACHINE'S MAC ADDRESS
         - history     : GET BROWSER HISTORY (LAST 20)
         - scrn        : GET SCREENSHOT OF CURRENT SESSION
 
-        **** CONTROL ****
+                CONTROL
         - killc       : DISCONNECT CLIENT
         - quit        : DISCONNECT SERVER
         - shutdown    : SHUTDOWN THE CLIENT'S DEVICE
@@ -147,19 +148,27 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
                     current_client = parse[-1]
 
                 elif 'quit' in command:
-                    print(f'\n{INFO} Terminating server connection!')
-                    server_socket.close()
-                    break
+                    confirmation = input('Do you wish to terminate the session? [y/n]: ')
+                    selection = True if confirmation in ['y', 'yes'] else False
+                    if selection:
+                        server_socket.close()
+                        print(f'\n{INFO} Terminating server session.')
+                        try:
+                            sys.exit(0)
+                        except SystemExit:
+                            os._exit(0)
+                    else:
+                        server.main()
 
                 else:
                     print(f"\n{WARNING}: {command} is not a valid command!")
 
-    def getTS(self):
+    def get_ts(self):
         return str(int(time.time()))
 
     def receive_scrn(self, client):
         try:
-            img_path = os.path.join(LOCATION, f'scrn/host__{self.getTS()}.npy')
+            img_path = os.path.join(LOCATION, f'scrn/host__{self.get_ts()}.npy')
             file = open(img_path, 'wb')
             data = client.recv(1024)
             file.write(data)
@@ -184,16 +193,15 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
 
     def handle_client(self, client_id):
         print(f"\n{INFO} Connected to: {client_store[client_id]['address']}")
+        # Get basic info to fill the client table
+        s = client_store[client_id]['socket']
+        client_store[client_id]['mac'] = s.recv(1024).decode()
+        s.send(b'received')
+        client_store[client_id]['system'] = s.recv(1024).decode()
+        s.send(b'received')
         while True:
             # Extract commands and socket for this client instance
             c = client_store[client_id]['commands']
-            s = client_store[client_id]['socket']
-            print('rotation')
-            print(c)
-            # Get basic info to fill the client table
-            client_store[client_id]['mac'] = s.recv(1024).decode()
-            s.send(b'received')
-            client_store[client_id]['system'] = s.recv(1024).decode()
             if len(c) > 0:
                 for com in c:
                     if 'help' in com:
@@ -241,7 +249,8 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
                     
                     c.remove(com)
 
-            time.sleep(0.1)
+            time.sleep(1)
+            
 
     def main(self):
         try:
@@ -267,7 +276,7 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
                 'commands': [],
                 'mac': 'N/A',
                 'system': 'N/A',
-                'joined': self.getTS(),
+                'joined': self.get_ts(),
             }
             client_thread = Thread(target=self.handle_client, args=(client_id,))
             client_thread.start()
@@ -281,14 +290,9 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         # FIXME: fix the interupt process by keyboard
         print(f"\n{INFO} Keyboard interrupt initiated")
-        confirmation = input('Do you wish to terminate the session? [y/n]: ')
-        selection = True if confirmation in ['y', 'yes'] else False
-        if selection:
-            server_socket.close()
-            print(f'\n{INFO} Terminating session.')
-            try:
-                sys.exit(0)
-            except SystemExit:
-                os._exit(0)
-        else:
-            server.main()
+        server_socket.close()
+        print(f'\n{INFO} Terminating server session.')
+        try:
+            sys.exit(0)
+        except SystemExit:
+            os._exit(0)

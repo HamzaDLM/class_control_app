@@ -53,6 +53,7 @@ class CCA_CLIENT:
                 sock.send(MAC_ADDRESS.encode())
                 sock.recv(1024)
                 sock.send(f"{PLATFORM['system']} {PLATFORM['release']}".encode())
+                sock.recv(1024)
                 print(f"[*] Connected to host {self.host}:{self.port}")
                 break
             except:
@@ -61,9 +62,9 @@ class CCA_CLIENT:
 
     def execute(self):
         while True:
-            
+            # FIXME: fix when server releases the connection (infinite loop)
             command = sock.recv(BUF_SIZE).decode()
-            print("command: ", command)
+
             if command == "mac":
                 sock.send(MAC_ADDRESS.encode())
 
@@ -93,6 +94,8 @@ class CCA_CLIENT:
 
             elif command == 'monon':
                 self.ctrlMonitor(1)
+
+            time.sleep(1)
 
     def ctrlMonitor(self, status: int):
         try:
