@@ -63,7 +63,7 @@ class CCA_CLIENT:
         while True:
             
             command = sock.recv(BUF_SIZE).decode()
-
+            print("command: ", command)
             if command == "mac":
                 sock.send(MAC_ADDRESS.encode())
 
@@ -169,6 +169,7 @@ class CCA_CLIENT:
 
 
 if __name__ == "__main__":
+    # TODO: add the interupt process
     client = CCA_CLIENT(HOST, PORT)
     try:
         client.start_connection()

