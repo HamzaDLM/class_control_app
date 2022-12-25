@@ -12,7 +12,10 @@ from datetime import datetime
 import numpy as np
 from ctypes import cast, POINTER
 import ctypes
+from utils import encrypt_send, decrypt_recv
 
+
+# FIXME: to point to server?
 HOST = socket.gethostbyname(socket.gethostname())
 PORT = 4444
 ADDR = (HOST, PORT)
@@ -35,8 +38,9 @@ FILE_SHARE_DELETE = 4
 CREATE_ALWAYS = 2
 
 if "Windows" in PLATFORM["system"]:
-    user32 = ctypes.WinDLL('user32')
-    kernel32 = ctypes.WinDLL('kernel32')
+    user32 = ctypes.WinDLL("user32")
+    kernel32 = ctypes.WinDLL("kernel32")
+
 
 class CCA_CLIENT:
     def __init__(self, host, port):
@@ -51,9 +55,9 @@ class CCA_CLIENT:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.connect((self.host, self.port))
                 sock.send(MAC_ADDRESS.encode())
-                sock.recv(1024)
+                sock.recv(BUF_SIZE)
                 sock.send(f"{PLATFORM['system']} {PLATFORM['release']}".encode())
-                sock.recv(1024)
+                sock.recv(BUF_SIZE)
                 print(f"[*] Connected to host {self.host}:{self.port}")
                 break
             except:
@@ -78,51 +82,65 @@ class CCA_CLIENT:
                 sock.send(b"exit")
                 break
 
-            elif command == 'volon':
+            elif command == "volon":
                 self.ctrlVolume(1)
-            
-            elif command == 'voloff':
+
+            elif command == "voloff":
                 self.ctrlVolume(0)
-            
-            elif command == 'shutdown':
-                os.system("shutdown /s /t 3") # shutdown after 3 seconds
-                sock.send(f'{socket.gethostbyname(socket.gethostname())} is being shutdown'.encode())
+
+            elif command == "shutdown":
+                os.system("shutdown /s /t 3")  # shutdown after 3 seconds
+                sock.send(
+                    f"{socket.gethostbyname(socket.gethostname())} is being shutdown".encode()
+                )
                 sock.close()
 
-            elif command == 'monoff':
+            elif command == "monoff":
                 self.ctrlMonitor(0)
 
-            elif command == 'monon':
+            elif command == "monon":
                 self.ctrlMonitor(1)
 
             time.sleep(1)
 
     def ctrlMonitor(self, status: int):
         try:
-            if 'Windows' in PLATFORM['system']:
+            if "Windows" in PLATFORM["system"]:
                 if status:
-                    sock.send(f"{socket.gethostbyname(socket.gethostname())}'s monitor was turned on".encode())
-                    user32.SendMessage(HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, -1)
+                    sock.send(
+                        f"{socket.gethostbyname(socket.gethostname())}'s monitor was turned on".encode()
+                    )
+                    user32.SendMessage(
+                        HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, -1
+                    )
                 if not status:
-                    sock.send(f"{socket.gethostbyname(socket.gethostname())}'s monitor was turned off".encode())
-                    user32.SendMessage(HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, 2)
-            if 'Linux' in PLATFORM['system']:
-                    import subprocess
-                    if status:
-                        subprocess.run(["xset", "-display", ":0.0", "dpms", "force", "off"])
-                    if not status:
-                        subprocess.run(["xset", "-display", ":0.0", "dpms", "force", "on"])
+                    sock.send(
+                        f"{socket.gethostbyname(socket.gethostname())}'s monitor was turned off".encode()
+                    )
+                    user32.SendMessage(
+                        HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, 2
+                    )
+            if "Linux" in PLATFORM["system"]:
+                import subprocess
+
+                if status:
+                    subprocess.run(["xset", "-display", ":0.0", "dpms", "force", "off"])
+                if not status:
+                    subprocess.run(["xset", "-display", ":0.0", "dpms", "force", "on"])
         except:
-            print('Error with monitor command!')
-            sock.send(b'Problem with monitor command')
+            print("Error with monitor command!")
+            sock.send(b"Problem with monitor command")
 
     def ctrlVolume(self, status: int):
         try:
-            if 'Windows' in PLATFORM['system']:
+            if "Windows" in PLATFORM["system"]:
                 from comtypes import CLSCTX_ALL
                 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+
                 devices = AudioUtilities.GetSpeakers()
-                interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+                interface = devices.Activate(
+                    IAudioEndpointVolume._iid_, CLSCTX_ALL, None
+                )
                 volume = cast(interface, POINTER(IAudioEndpointVolume))
                 if status:
                     if volume.GetMute() == 1:
@@ -132,17 +150,18 @@ class CCA_CLIENT:
                 else:
                     volume.SetMasterVolumeLevel(volume.GetVolumeRange()[0], None)
                     sock.send("Volume is decreased to 0%".encode())
-            if 'Linux' in PLATFORM['system']:
-                    from subprocess import call
-                    if status:
-                        call(["amixer", "-D", "pulse", "sset", "Master", "50%"])
-                        sock.send("Volume is decreased to 50%".encode())
-                    if not status:
-                        call(["amixer", "-D", "pulse", "sset", "Master", "0%"])
-                        sock.send("Volume is decreased to 0%".encode())
+            if "Linux" in PLATFORM["system"]:
+                from subprocess import call
+
+                if status:
+                    call(["amixer", "-D", "pulse", "sset", "Master", "50%"])
+                    sock.send("Volume is decreased to 50%".encode())
+                if not status:
+                    call(["amixer", "-D", "pulse", "sset", "Master", "0%"])
+                    sock.send("Volume is decreased to 0%".encode())
         except:
-            print('Error with volume command!')
-            sock.send(b'Problem with volume command')
+            print("Error with volume command!")
+            sock.send(b"Problem with volume command")
 
     def getTS(self):
         return str(int(time.time()))
@@ -162,13 +181,13 @@ class CCA_CLIENT:
         # img_size = img_array.size * img_array.itemsize
         img_path = os.path.join(LOCATION, f"scrn/{MAC_ADDRESS}_{self.getTS()}.npy")
         np.save(img_path, img_array)
-        file = open(img_path, 'rb')
+        file = open(img_path, "rb")
         data = file.read(BUF_SIZE)
         sock.send(data)
-        while data != b'':
+        while data != b"":
             data = file.read(BUF_SIZE)
             sock.send(data)
-        print('[*] Screenshot sent successfully')
+        print("[*] Screenshot sent successfully")
 
 
 if __name__ == "__main__":
@@ -178,5 +197,5 @@ if __name__ == "__main__":
         client.start_connection()
         client.execute()
     except:
-        print('Error occured')
-    print('[*] Terminating session')
+        print("Error occured")
+    print("[*] Terminating session")
