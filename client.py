@@ -1,5 +1,6 @@
 # CLASS CONTROL APP - CLIENT SIDE (STUDENTS)
-# TODO:: check if connection still maintained
+# TODO: check if connection still maintained
+# TODO: instead of turning monitor off, black screen overlay with message (Focus on your teacher) + turn off keyboards
 from getmac import get_mac_address
 from browser_history import get_history
 from PIL import ImageGrab
@@ -37,6 +38,9 @@ FILE_SHARE_READ = 1
 FILE_SHARE_DELETE = 4
 CREATE_ALWAYS = 2
 
+# FIXME:
+AES_KEY = "C&F)J@NcRfUjXn2r"
+
 if "Windows" in PLATFORM["system"]:
     user32 = ctypes.WinDLL("user32")
     kernel32 = ctypes.WinDLL("kernel32")
@@ -47,6 +51,17 @@ class CCA_CLIENT:
         self.host = host
         self.port = port
 
+    @staticmethod
+    def send_msg(client, data: str) -> None:
+        cipher = encrypt_send(AES_KEY, data)
+        client.send(cipher)
+
+    @staticmethod
+    def recv_msg(client, buf_size=BUF_SIZE) -> bytes:
+        cipher = client.recv(buf_size)
+        msg = decrypt_recv(AES_KEY, cipher)
+        return msg
+
     def start_connection(self):
         global sock
         print("[*] Looking for master!")
@@ -54,32 +69,32 @@ class CCA_CLIENT:
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.connect((self.host, self.port))
-                sock.send(MAC_ADDRESS.encode())
-                sock.recv(BUF_SIZE)
-                sock.send(f"{PLATFORM['system']} {PLATFORM['release']}".encode())
-                sock.recv(BUF_SIZE)
+                self.send_msg(sock, MAC_ADDRESS.encode())
+                self.recv_msg()
+                self.send_msg(sock, f"{PLATFORM['system']} {PLATFORM['release']}".encode())
+                self.recv_msg()
                 print(f"[*] Connected to host {self.host}:{self.port}")
                 break
             except:
                 sock.close()
             time.sleep(2)
 
-    def execute(self):
+    def execute_commands(self):
         while True:
             # FIXME: fix when server releases the connection (infinite loop)
-            command = sock.recv(BUF_SIZE).decode()
+            command = self.recv_msg().decode()
 
             if command == "mac":
-                sock.send(MAC_ADDRESS.encode())
+                self.send_msg(sock, MAC_ADDRESS.encode())
 
             elif command == "history":
-                sock.send(self.getHistory())
+                self.send_msg(sock, self.getHistory())
 
             elif command == "scrn":
                 self.getScreenshot()
 
             elif command == "killc":
-                sock.send(b"exit")
+                self.send_msg(sock, b"exit")
                 break
 
             elif command == "volon":
@@ -90,7 +105,7 @@ class CCA_CLIENT:
 
             elif command == "shutdown":
                 os.system("shutdown /s /t 3")  # shutdown after 3 seconds
-                sock.send(
+                self.send_msg(sock, 
                     f"{socket.gethostbyname(socket.gethostname())} is being shutdown".encode()
                 )
                 sock.close()
@@ -107,14 +122,14 @@ class CCA_CLIENT:
         try:
             if "Windows" in PLATFORM["system"]:
                 if status:
-                    sock.send(
+                    self.send_msg(sock, 
                         f"{socket.gethostbyname(socket.gethostname())}'s monitor was turned on".encode()
                     )
                     user32.SendMessage(
                         HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, -1
                     )
                 if not status:
-                    sock.send(
+                    self.send_msg(sock, 
                         f"{socket.gethostbyname(socket.gethostname())}'s monitor was turned off".encode()
                     )
                     user32.SendMessage(
@@ -129,7 +144,7 @@ class CCA_CLIENT:
                     subprocess.run(["xset", "-display", ":0.0", "dpms", "force", "on"])
         except:
             print("Error with monitor command!")
-            sock.send(b"Problem with monitor command")
+            self.send_msg(sock, b"Problem with monitor command")
 
     def ctrlVolume(self, status: int):
         try:
@@ -146,22 +161,22 @@ class CCA_CLIENT:
                     if volume.GetMute() == 1:
                         volume.SetMute(0, None)
                     volume.SetMasterVolumeLevel(volume.GetVolumeRange()[1], None)
-                    sock.send("Volume is increased to 100%".encode())
+                    self.send_msg(sock, "Volume is increased to 100%".encode())
                 else:
                     volume.SetMasterVolumeLevel(volume.GetVolumeRange()[0], None)
-                    sock.send("Volume is decreased to 0%".encode())
+                    self.send_msg(sock, "Volume is decreased to 0%".encode())
             if "Linux" in PLATFORM["system"]:
                 from subprocess import call
 
                 if status:
                     call(["amixer", "-D", "pulse", "sset", "Master", "50%"])
-                    sock.send("Volume is decreased to 50%".encode())
+                    self.send_msg(sock, "Volume is decreased to 50%".encode())
                 if not status:
                     call(["amixer", "-D", "pulse", "sset", "Master", "0%"])
-                    sock.send("Volume is decreased to 0%".encode())
+                    self.send_msg(sock, "Volume is decreased to 0%".encode())
         except:
             print("Error with volume command!")
-            sock.send(b"Problem with volume command")
+            self.send_msg(sock, b"Problem with volume command")
 
     def getTS(self):
         return str(int(time.time()))
@@ -183,10 +198,10 @@ class CCA_CLIENT:
         np.save(img_path, img_array)
         file = open(img_path, "rb")
         data = file.read(BUF_SIZE)
-        sock.send(data)
+        self.send_msg(sock, data)
         while data != b"":
             data = file.read(BUF_SIZE)
-            sock.send(data)
+            self.send_msg(sock, data)
         print("[*] Screenshot sent successfully")
 
 
@@ -195,7 +210,7 @@ if __name__ == "__main__":
     client = CCA_CLIENT(HOST, PORT)
     try:
         client.start_connection()
-        client.execute()
+        client.execute_commands()
     except:
         print("Error occured")
     print("[*] Terminating session")

@@ -1,4 +1,5 @@
 # CLASS CONTROL APP - SERVER SIDE (TEACHER)
+# FIXME: fix the AES encryption
 # TODO: add a remote updater (def to look for changes and update accordingly)
 from threading import Thread
 import numpy as np
@@ -11,6 +12,8 @@ import sys
 import pickle
 from utils import encrypt_send, decrypt_recv
 
+# FIXME:
+AES_KEY = "C&F)J@NcRfUjXn2r"
 
 LOCATION = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
@@ -49,7 +52,8 @@ class CCA_SERVER:
         self.host = host
         self.port = port
 
-    def banner(self):
+    @staticmethod
+    def banner():
         print(
             FAIL
             + r"""
@@ -70,7 +74,8 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
 """
         )
 
-    def list_commands(self):
+    @staticmethod
+    def list_commands():
         print(
             r"""
 
@@ -94,7 +99,8 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
         """
         )
 
-    def list_client_commands(self):
+    @staticmethod
+    def list_client_commands():
         print(
             r"""
 
@@ -119,14 +125,14 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
         )
 
     @staticmethod
-    def send_msg(client, data):
-        cipher = encrypt_send(data)
-        client.send(cipher) 
+    def send_msg(client, data) -> None:
+        cipher = encrypt_send(AES_KEY, data)
+        client.send(cipher)
 
     @staticmethod
-    def recv_msg(client):
-        cipher = client.recv(BUF_SIZE)
-        msg = decrypt_recv(cipher)
+    def recv_msg(client, buf_size=BUF_SIZE) -> bytes:
+        cipher = client.recv(buf_size)
+        msg = decrypt_recv(AES_KEY, cipher)
         return msg
 
     def execute_commands(self):
@@ -192,10 +198,10 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
         try:
             img_path = os.path.join(LOCATION, f"scrn/host__{self.get_ts()}.npy")
             file = open(img_path, "wb")
-            data = client.recv(BUF_SIZE)
+            data = self.recv_msg(client)
             file.write(data)
             while data != b"":
-                data = client.recv(BUF_SIZE)
+                data = self.recv_msg(client)
                 file.write(data)
                 if len(data) < BUF_SIZE:
                     break
@@ -209,18 +215,18 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
             server_socket.close()
 
     def result(self, client):
-        client.send(command.encode())
-        result_output = client.recv(BUF_SIZE).decode()
-        print("\n" + result_output)
+        self.send_msg(client, command.encode())
+        result_output = self.recv_msg(client)
+        print("\n" + result_output.decode())
 
     def handle_client(self, client_id):
         print(f"\n{INFO} Connected to: {client_store[client_id]['address']}")
         # Get basic info to fill the client table
         s = client_store[client_id]["socket"]
-        client_store[client_id]["mac"] = s.recv(BUF_SIZE).decode()
-        s.send(b"received")
-        client_store[client_id]["system"] = s.recv(BUF_SIZE).decode()
-        s.send(b"received")
+        client_store[client_id]["mac"] = self.recv_msg(s).decode()
+        self.send_msg(s, b"received")
+        client_store[client_id]["system"] = self.recv_msg(s).decode()
+        self.send_msg(s, b"received")
         while True:
             # Extract commands and socket for this client instance
             c = client_store[client_id]["commands"]
@@ -256,14 +262,14 @@ ________/\\\\\\\\\________/\\\\\\\\\_____/\\\\\\\\\____
                         break
 
                     elif command == "history":
-                        s.send(command.encode())
-                        result = s.recv(BUF_SIZE * 10)
+                        self.send_msg(s, command.encode())
+                        result = self.recv_msg(BUF_SIZE * 10)
                         result = pickle.loads(result)
                         for h in result:
                             print(f"\n{datetime.fromtimestamp(h)} : {result[h]}")
 
                     elif command == "scrn":
-                        s.send(command.encode())
+                        self.send_msg(s, command.encode())
                         self.receive_scrn(s)
 
                     else:

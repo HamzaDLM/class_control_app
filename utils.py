@@ -2,8 +2,9 @@ from Crypto.Cipher import AES
 import base64
 
 
-def encrypt_send(aes_key, msg, iv):
-    enc_s = AES.new(aes_key, AES.MODE_CFB, iv)
+def encrypt_send(aes_key, msg, iv=None):
+
+    enc_s = AES.new(aes_key, AES.MODE_EAX)
 
     if type(msg) == bytes:
         cipher_text = enc_s.encrypt(msg)
@@ -14,10 +15,10 @@ def encrypt_send(aes_key, msg, iv):
     return encoded_cipher_text
 
 
-def decrypt_recv(aes_key, cipher, iv):
+def decrypt_recv(aes_key, cipher, iv=None):
 
     try:
-        decryption_suite = AES.new(aes_key, AES.MODE_CFB, iv)
+        decryption_suite = AES.new(aes_key, AES.MODE_EAX)
         plain_text = decryption_suite.decrypt(base64.b64decode(cipher + b"=="))
         return (
             plain_text
@@ -26,4 +27,4 @@ def decrypt_recv(aes_key, cipher, iv):
         )
 
     except TypeError:
-        pass
+        print("Key incorrect or message corrupted")
