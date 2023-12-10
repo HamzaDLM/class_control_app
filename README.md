@@ -2,10 +2,6 @@
 
 ## Description
 
-This platform aims to enable teachers to have control over children’s computers and be able to do basic monitoring and control over them like turning off monitors ...etc.
-The platform should be accessible either via terminal or web UI localy hosted.
-The communication should be secured end-to-end and the app os agnostic.
-
 :warning: **Work still in progress**
 
 ## Installation
@@ -48,12 +44,3 @@ pip install -r requirements.txt
 - [ ] Complete the commands list.
 - [ ] Add checks for if connections still maintained.
 - [ ] Add Connection via secured tokens.
-
-
-## Contributions
-
-Feel free to submit a pull request!
-
-## Disclaimer
-
-Using this program as a RAT against devices you have no permission on is immoral & illegal!
